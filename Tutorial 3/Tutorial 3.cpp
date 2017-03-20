@@ -22,11 +22,11 @@ void print_help() {
 	std::cerr << "  -h : print this message" << std::endl;
 }
 
-vector<string> loadFile(char* fileDirectory)
+string loadFile(char* fileDirectory)
 {
 	ifstream file;
+	string data;
 	string line;
-	vector<string> data;
 	if (fileDirectory != nullptr)
 	{
 		file.open(fileDirectory);
@@ -36,31 +36,33 @@ vector<string> loadFile(char* fileDirectory)
 		std::cout << "File Opened!" << std::endl;
 		while (getline(file, line))
 		{
-			data.push_back(line);
+			data += line;
 		}
 	}
 	return data;
 }
 
-vector<float> parseData(vector<string> data)
+vector<float> parseData(string data)
 {
 	vector<float> temps;
+	int column = 0;
+	string num;
 	for (int i = 0; i < data.size(); i++)
-	{
-		int column = 0;
-		string num;
-		for (int j = 0; j < data[i].size(); j++)
+	{		
+		if (column == 6)
 		{
-			if (column == 5)
-			{
-				num += data[i][j];
-			}
-			if (data[i][j] == ' ')
-			{
-				column++;
-			}
+			temps.push_back(stof(num));
+			num.clear();
+			column = 1;
 		}
-		temps.push_back(stof(num));
+		if (column == 5)
+		{
+			num += data[i];
+		}
+		if (data[i] == ' ')
+		{
+			column++;
+		}
 	}
 	return temps;
 }
@@ -82,7 +84,7 @@ int main(int argc, char **argv) {
 
 	time = clock() - time;
 	cout << time << endl;
-	vector<string> data = loadFile("../temp_lincolnshire_short.txt");
+	string data = loadFile("../temp_lincolnshire_short.txt");
 	vector<float> temperatures = parseData(data);
 	time = clock() - time;
 	cout << time << endl;
