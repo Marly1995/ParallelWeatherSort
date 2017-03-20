@@ -21,6 +21,20 @@ void print_help() {
 	std::cerr << "  -l : list all platforms and devices" << std::endl;
 	std::cerr << "  -h : print this message" << std::endl;
 }
+float* fscanFile(char* fileDirectory, int dataSize)
+{
+	float* data = new float[dataSize];
+	FILE * myFile;
+
+	myFile = fopen(fileDirectory, "r");
+	fseek(myFile, 0L, SEEK_SET);
+	for (int i = 0; i < dataSize; i++)
+	{
+		fscanf(myFile, "%*s %*lf %*lf %*lf %*lf %f", &data[i]);
+	}
+	fclose(myFile);
+	return data;
+}
 
 string loadFile(char* fileDirectory)
 {
@@ -39,33 +53,34 @@ string loadFile(char* fileDirectory)
 			data += line;
 		}
 	}
+	file.close();
 	return data;
 }
-//
-//float* parseData(string data, int dataSize)
-//{
-//	float[dataSize] temps;
-//	int column = 0;
-//	string num;
-//	for (int i = 0; i < data.size(); i++)
-//	{		
-//		if (column == 6)
-//		{
-//			temps.push_back(stof(num));
-//			num.clear();
-//			column = 1;
-//		}
-//		if (column == 5)
-//		{
-//			num += data[i];
-//		}
-//		if (data[i] == ' ')
-//		{
-//			column++;
-//		}
-//	}
-//	return temps;
-//}
+
+vector<float> parseData(string data, int dataSize)
+{
+	vector<float> temps;
+	int column = 0;
+	string num;
+	for (int i = 0; i < data.size(); i++)
+	{		
+		if (column == 6)
+		{
+			temps.push_back(stof(num));
+			num.clear();
+			column = 1;
+		}
+		if (column == 5)
+		{
+			num += data[i];
+		}
+		if (data[i] == ' ')
+		{
+			column++;
+		}
+	}
+	return temps;
+}
 
 
 int main(int argc, char **argv) {
@@ -84,12 +99,15 @@ int main(int argc, char **argv) {
 
 	time = clock() - time;
 	cout << time << endl;
-	string data = loadFile("../temp_lincolnshire_short.txt");
-	float temps[200] = {0.0f};
+	float* data = fscanFile("../temp_lincolnshire.txt", 1800000);
+	//string data = loadFile("../temp_lincolnshire_short.txt");
+	time = clock() - time;
+	cout << time << endl;
+	float temps[100] = {0.0f};
 	int column = 0;
 	int index = 0;
 	string num;
-	for (int i = 0; i < data.size(); i++)
+	/*for (int i = 0; i < data.size(); i++)
 	{		
 		if (column == 6)
 		{
@@ -110,7 +128,7 @@ int main(int argc, char **argv) {
 		{
 			column++;
 		}
-	}
+	}*/
 	time = clock() - time;
 	cout << time << endl;
 
