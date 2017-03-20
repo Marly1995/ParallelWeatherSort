@@ -41,31 +41,31 @@ string loadFile(char* fileDirectory)
 	}
 	return data;
 }
-
-vector<float> parseData(string data)
-{
-	vector<float> temps;
-	int column = 0;
-	string num;
-	for (int i = 0; i < data.size(); i++)
-	{		
-		if (column == 6)
-		{
-			temps.push_back(stof(num));
-			num.clear();
-			column = 1;
-		}
-		if (column == 5)
-		{
-			num += data[i];
-		}
-		if (data[i] == ' ')
-		{
-			column++;
-		}
-	}
-	return temps;
-}
+//
+//float* parseData(string data, int dataSize)
+//{
+//	float[dataSize] temps;
+//	int column = 0;
+//	string num;
+//	for (int i = 0; i < data.size(); i++)
+//	{		
+//		if (column == 6)
+//		{
+//			temps.push_back(stof(num));
+//			num.clear();
+//			column = 1;
+//		}
+//		if (column == 5)
+//		{
+//			num += data[i];
+//		}
+//		if (data[i] == ' ')
+//		{
+//			column++;
+//		}
+//	}
+//	return temps;
+//}
 
 
 int main(int argc, char **argv) {
@@ -85,7 +85,32 @@ int main(int argc, char **argv) {
 	time = clock() - time;
 	cout << time << endl;
 	string data = loadFile("../temp_lincolnshire_short.txt");
-	vector<float> temperatures = parseData(data);
+	float temps[200] = {0.0f};
+	int column = 0;
+	int index = 0;
+	string num;
+	for (int i = 0; i < data.size(); i++)
+	{		
+		if (column == 6)
+		{
+			temps[index] = stof(num);
+			index++;
+			num.clear();
+			column = 1;
+		}
+		if (column == 5)
+		{
+			num += data[i];
+		}
+		if (data[i] == ' ')
+		{
+			column++;
+		}
+		if (!isalpha(data[i]))
+		{
+			column++;
+		}
+	}
 	time = clock() - time;
 	cout << time << endl;
 
