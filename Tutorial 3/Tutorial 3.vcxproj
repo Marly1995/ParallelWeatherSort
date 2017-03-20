@@ -177,12 +177,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="WeatherData.h" />
   </ItemGroup>
   <ItemGroup>
     <Intel_OpenCL_Build_Rules Include="my_kernels.cl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tutorial 3.cpp" />
+    <ClCompile Include="WeatherData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="my_kernels3.cl" />

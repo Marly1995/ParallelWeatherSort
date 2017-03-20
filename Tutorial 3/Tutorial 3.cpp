@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <time.h>
 
 #ifdef __APPLE__
 #include <OpenCL/cl.hpp>
@@ -21,10 +22,56 @@ void print_help() {
 	std::cerr << "  -h : print this message" << std::endl;
 }
 
+vector<string> loadFile(char* fileDirectory)
+{
+	ifstream file;
+	string line;
+	vector<string> data;
+	if (fileDirectory != nullptr)
+	{
+		file.open(fileDirectory);
+	}
+	if (file.is_open())
+	{
+		std::cout << "File Opened!" << std::endl;
+		while (getline(file, line))
+		{
+			data.push_back(line);
+		}
+	}
+	return data;
+}
+
+vector<float> parseData(vector<string> data)
+{
+	vector<float> temps;
+	for (int i = 0; i < data.size(); i++)
+	{
+		int column = 0;
+		string num;
+		for (int j = 0; j < data[i].size(); j++)
+		{
+			if (column == 5)
+			{
+				num += data[i][j];
+			}
+			if (data[i][j] == ' ')
+			{
+				column++;
+			}
+		}
+		temps.push_back(stof(num));
+	}
+	return temps;
+}
+
+
 int main(int argc, char **argv) {
 	//Part 1 - handle command line options such as device selection, verbosity, etc.
 	int platform_id = 0;
 	int device_id = 0;
+
+	clock_t time = clock();
 
 	for (int i = 1; i < argc; i++)	{
 		if ((strcmp(argv[i], "-p") == 0) && (i < (argc - 1))) { platform_id = atoi(argv[++i]); }
@@ -32,6 +79,14 @@ int main(int argc, char **argv) {
 		else if (strcmp(argv[i], "-l") == 0) { std::cout << ListPlatformsDevices() << std::endl; }
 		else if (strcmp(argv[i], "-h") == 0) { print_help(); }
 	}
+
+	time = clock() - time;
+	cout << time << endl;
+	vector<string> data = loadFile("../temp_lincolnshire_short.txt");
+	vector<float> temperatures = parseData(data);
+	time = clock() - time;
+	cout << time << endl;
+
 
 	//detect any potential exceptions
 	try {
