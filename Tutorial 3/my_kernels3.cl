@@ -1,4 +1,23 @@
-﻿////////////////////////
+﻿// https://www.math.kth.se/na/SF2568/parpro-17/F7.pdf
+// https://github.com/Gram21/GPUSorting/blob/master/Code/Sort.cl
+
+// USEFUL FUNCTIONS
+void swap(__global int *A, __global int *B)
+{ 
+	int temp = *B;
+	*B = *A;
+	*A = temp;
+}
+
+void compare(__global int *A, __global int *B)
+{ 
+	if(*A > *B) // other function needed for direction style check
+		swap(A, B);
+}
+
+
+
+////////////////////////
 ///////////////////////
 // START ODD EVEN SORT
 void cmpxchg(__global int *A, __global int *B)
@@ -20,14 +39,14 @@ __kernel void oddeven_sort(__global int *A)
 	{ 
 		if(id%2 == 1 && id+1 < N)
 		{ 
-			cmpxchg(&A[id], &A[id+1]);
+			cmpxchg(&A[id], &A[id+1]); // odd
 		}
 
 		barrier(CLK_GLOBAL_MEM_FENCE);
 
 		if(id%2 == 0 && id+1 < N)
 		{
-			cmpxchg(&A[id], &A[id+1]);
+			cmpxchg(&A[id], &A[id+1]); //  even
 		}
 	}
 }
