@@ -1,4 +1,88 @@
-﻿//fixed 4 step reduce
+﻿////////////////////////
+///////////////////////
+// START ODD EVEN SORT
+void cmpxchg(__global int *A, __global int *B)
+{ 
+	if(*A > *B)
+	{ 
+		int t = *A; 
+		*A = *B; 
+		*B = t;
+	}
+}
+
+__kernel void oddeven_sort(__global int *A)
+{ 
+	int id = get_global_id(0);
+	int N = get_global_size(0);
+
+	for (int i = 0; i < N; i += 2)
+	{ 
+		if(id%2 == 1 && id+1 < N)
+		{ 
+			cmpxchg(&A[id], &A[id+1]);
+		}
+
+		barrier(CLK_GLOBAL_MEM_FENCE);
+
+		if(id%2 == 0 && id+1 < N)
+		{
+			cmpxchg(&A[id], &A[id+1]);
+		}
+	}
+}
+//////////////////////
+/////////////////////
+// END ODD EVEN SORT
+
+///////////////////////
+//////////////////////
+// START BITONIC SORT
+void btic_cmpxchg(__global int *A, __global int *B, bool dir)
+{ 
+	if((!dir && *A > *B) || (dir && *A < *B))
+	{
+		int t = *A;
+		*A =*B;
+		*B = t;
+	}
+}
+
+void bitonic_merge(int id, __global int *A, int N, bool dir)
+{
+	for	(int i = N/2; i > 0; i/= 2)
+	{ 
+		if((id % (i*2)) < i)
+		{ 
+			btic_cmpxchg(&A[id], &A[id+i], dir);
+		}
+		barrier(CLK_GLOBAL_MEM_FENCE);
+	}
+}
+
+__kernel void bitonic_sort(__global int *A)
+{ 
+	int id = get_global_id(0);
+	int N = get_global_size(0);
+
+	for	(int i = 1; i < N/2; i*2)
+	{ 
+		if(id%(i*4) < i*2)
+			bitonic_merge(id, A, i*2, false);
+		else if((id + i*2)%(i*4) < i*2)
+			bitonic_merge(id, A, i*2, true);
+		barrier(CLK_GLOBAL_MEM_FENCE);
+	}
+	bitonic_merge(id, A, N, false);
+}
+/////////////////////
+////////////////////
+// END BITONIC SORT
+
+//	OLD CODE FROM WORKSHOPS
+///////////////////////////
+//////////////////////////
+//fixed 4 step reduce
 __kernel void reduce_add_1(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
 	int N = get_global_size(0);

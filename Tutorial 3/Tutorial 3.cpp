@@ -105,7 +105,6 @@ int main(int argc, char **argv) {
 		// File parsing
 		int dataSize = 100;//1873106;
 		time = clock() - time;
-		std::cout << time << std::endl;
 		float* data = fscanFile("../../temp_lincolnshire_short.txt", dataSize);
 		//string data = loadFile("../temp_lincolnshire_short.txt");
 		/*float temps[100] = { 0.0f };
@@ -135,7 +134,7 @@ int main(int argc, char **argv) {
 		}
 		}*/
 		time = clock() - time;
-		std::cout << time << std::endl;
+		std::cout << "read and parse time = " << time << std::endl;
 
 		//Part 2 - host operations
 		//2.1 Select computing devices
@@ -208,24 +207,27 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 
 		//Part 5 - device operations
+		time = clock() - time;
 
 		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_1");
+		cl::Kernel kernel_1 = cl::Kernel(program, "oddeven_sort");
 		kernel_1.setArg(0, buffer_A);
-		kernel_1.setArg(1, buffer_B);
 //		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
 
 		//5.3 Copy the result from device to host
-		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+		queue.enqueueReadBuffer(buffer_A, CL_TRUE, 0, output_size, &A[0]);
 
-		//std::cout << "A = " << A << std::endl;
+		time = clock() - time;
+		std::cout << "sort time = " << time << std::endl;
+
+		std::cout << "A = " << A << std::endl;
 		//std::cout << "B = " << B << std::endl;
 	}
 	catch (cl::Error err) {
