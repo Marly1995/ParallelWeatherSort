@@ -102,17 +102,17 @@ int main(int argc, char **argv) {
 
 	//detect any potential exceptions
 	try {
+		// File parsing
+		int dataSize = 100;//1873106;
 		time = clock() - time;
 		std::cout << time << std::endl;
-		float* data = fscanFile("../../temp_lincolnshire.txt", 1800000);
+		float* data = fscanFile("../../temp_lincolnshire_short.txt", dataSize);
 		//string data = loadFile("../temp_lincolnshire_short.txt");
-		time = clock() - time;
-		std::cout << time << std::endl;
-		float temps[100] = { 0.0f };
+		/*float temps[100] = { 0.0f };
 		int column = 0;
 		int index = 0;
 		string num;
-		/*for (int i = 0; i < data.size(); i++)
+		for (int i = 0; i < data.size(); i++)
 		{
 		if (column == 6)
 		{
@@ -169,12 +169,20 @@ int main(int argc, char **argv) {
 
 		//Part 4 - memory allocation
 		//host - input
-		std::vector<mytype> A(10, 1);//allocate 10 elements with an initial value 1 - their sum is 10 so it should be easy to check the results!
+		time = clock() - time;
+		std::cout << time << std::endl;
+		std::vector<mytype> A(dataSize, 0);
+		for (int i = 0; i < dataSize; i++)
+		{
+			A[i] = data[i]; 
+		}
+		time = clock() - time;
+		std::cout << time << std::endl;
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
-		size_t local_size = 10;
+		size_t local_size = 32;
 
 		size_t padding_size = A.size() % local_size;
 
@@ -217,8 +225,8 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "A = " << A << std::endl;
-		std::cout << "B = " << B << std::endl;
+		//std::cout << "A = " << A << std::endl;
+		//std::cout << "B = " << B << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
