@@ -97,44 +97,46 @@ int main(int argc, char **argv) {
 		else if (strcmp(argv[i], "-h") == 0) { print_help(); }
 	}
 
-	time = clock() - time;
-	cout << time << endl;
-	float* data = fscanFile("../temp_lincolnshire.txt", 1800000);
-	//string data = loadFile("../temp_lincolnshire_short.txt");
-	time = clock() - time;
-	cout << time << endl;
-	float temps[100] = {0.0f};
-	int column = 0;
-	int index = 0;
-	string num;
-	/*for (int i = 0; i < data.size(); i++)
-	{		
-		if (column == 6)
-		{
-			temps[index] = stof(num);
-			index++;
-			num.clear();
-			column = 1;
-		}
-		if (column == 5)
-		{
-			num += data[i];
-		}
-		if (data[i] == ' ')
-		{
-			column++;
-		}
-		if (!isalpha(data[i]))
-		{
-			column++;
-		}
-	}*/
-	time = clock() - time;
-	cout << time << endl;
+	
 
 
 	//detect any potential exceptions
 	try {
+		time = clock() - time;
+		std::cout << time << std::endl;
+		float* data = fscanFile("../../temp_lincolnshire.txt", 1800000);
+		//string data = loadFile("../temp_lincolnshire_short.txt");
+		time = clock() - time;
+		std::cout << time << std::endl;
+		float temps[100] = { 0.0f };
+		int column = 0;
+		int index = 0;
+		string num;
+		/*for (int i = 0; i < data.size(); i++)
+		{
+		if (column == 6)
+		{
+		temps[index] = stof(num);
+		index++;
+		num.clear();
+		column = 1;
+		}
+		if (column == 5)
+		{
+		num += data[i];
+		}
+		if (data[i] == ' ')
+		{
+		column++;
+		}
+		if (!isalpha(data[i]))
+		{
+		column++;
+		}
+		}*/
+		time = clock() - time;
+		std::cout << time << std::endl;
+
 		//Part 2 - host operations
 		//2.1 Select computing devices
 		cl::Context context = GetContext(platform_id, device_id);
@@ -148,7 +150,7 @@ int main(int argc, char **argv) {
 		//2.2 Load & build the device code
 		cl::Program::Sources sources;
 
-		AddSources(sources, "my_kernels3.cl");
+		AddSources(sources, "../../Tutorial 3/my_kernels3.cl");
 
 		cl::Program program(context, sources);
 
