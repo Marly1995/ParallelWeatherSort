@@ -260,7 +260,7 @@ __kernel void reduce_add_4_pow(__global const int *A, __global int *B, __local i
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
 
-	scratch[lid] = (A[id] - M[0]) * (A[id] - M[0]);
+	scratch[lid] = (A[id] - M[0]) * (A[id] - M[0])/10000;
 	//printf("  %d  ", scratch[lid]);
 	//scratch[lid] = pown((A[id] - M[0]), 2);
 

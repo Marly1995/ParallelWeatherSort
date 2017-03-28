@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
 		std::vector<mytype> A(dataSize, 0);
 		for (int i = 0; i < dataSize; i++)
 		{
-			A[i] = data[i]; 
+			A[i] = data[i]*100; 
 		}
 		time = clock() - time;
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "Max = " << B << std::endl;
+		std::cout << "Max = " << B[0]/100 << std::endl;
 
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
@@ -231,7 +231,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "Min = " << B << std::endl;
+		std::cout << "Min = " << B[0]/100 << std::endl;
 
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
@@ -246,9 +246,10 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
 		std::vector<mytype> mean(1);
-		mean[0] = B[0] / dataSize; 
+		mean[0] = (B[0] / (dataSize)); 
+		float fmean = (float)(B[0] / dataSize)/100.0f;
 
-		std::cout << "Mean = " << mean << std::endl;
+		std::cout << "Mean = " << fmean << std::endl;
 
 		std::vector<mytype> C(1);
 		output_size = C.size() * sizeof(mytype);//size in bytes
@@ -279,7 +280,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
 
-		float SD = sqrt(C[0] / dataSize);
+		float SD = (sqrt(C[0] / dataSize));
 
 		std::cout << "SD = " << SD << std::endl;
 
