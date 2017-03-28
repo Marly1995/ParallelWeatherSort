@@ -164,17 +164,13 @@ int main(int argc, char **argv) {
 		typedef int mytype;
 
 		//Part 4 - memory allocation
-		//host - input
-		time = clock() - time;
-		std::cout << time << std::endl;
+		//host - input	
 		std::vector<mytype> A(dataSize, 0);
 		for (int i = 0; i < dataSize; i++)
 		{
 			A[i] = data[i]; 
 		}
 		time = clock() - time;
-		std::cout << "int conv time = " << time << std::endl;
-
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
 		//this makes the code more efficient
@@ -206,7 +202,6 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 
 		//Part 5 - device operations
-		time = clock() - time;
 
 		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
@@ -250,9 +245,6 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		//std::cout << "A = " << A << std::endl;
-		std::cout << "Sum = " << B << std::endl;
-
 		std::vector<mytype> mean(1);
 		mean[0] = B[0] / dataSize; 
 
@@ -287,11 +279,12 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
 
-		std::cout << "SD Sum = " << C << std::endl;
-
 		float SD = sqrt(C[0] / dataSize);
 
 		std::cout << "SD = " << SD << std::endl;
+
+		time = clock() - time;
+		std::cout << "Total Calculation Time = " << time << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
