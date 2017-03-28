@@ -82,6 +82,17 @@ vector<float> parseData(string data, int dataSize)
 	return temps;
 }
 
+void printData(string info, float result, cl::Event event)
+{
+	std::cout << "///////////////////////////////////////////////////////////////////////////////" << std::endl;
+	std::cout << info << result << std::endl;
+	//std::cout << "" << std::endl;
+	//std::cout << GetFullProfilingInfo(event, ProfilingResolution::PROF_US) << endl;
+	//std::cout << "" << std::endl;
+	std::cout << "Kernel execution time [ns]: " << event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
+	std::cout << "///////////////////////////////////////////////////////////////////////////////" << std::endl;
+
+}
 
 int main(int argc, char **argv) {
 	//Part 1 - handle command line options such as device selection, verbosity, etc.
@@ -191,7 +202,10 @@ int main(int argc, char **argv) {
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;
 
-		cl::Event profile_event;
+		cl::Event max_event;
+		cl::Event min_event;
+		cl::Event mean_event;
+		cl::Event sd_event;
 
 		//host - output
 		//int *B;
@@ -215,12 +229,12 @@ int main(int argc, char **argv) {
 		kernel_0.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
 
 																   //call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_0, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+		queue.enqueueNDRangeKernel(kernel_0, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &max_event);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "Max = " << B[0]/10 << std::endl;
+		printData("Maximum Temperature:", B[0]/10, max_event);
 
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
@@ -228,12 +242,12 @@ int main(int argc, char **argv) {
 		kernel_min.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
 
 																   //call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_min, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+		queue.enqueueNDRangeKernel(kernel_min, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &min_event);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::cout << "Min = " << B[0]/10 << std::endl;
+		printData("Minimum Temperature:", B[0] / 10, min_event);
 
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
@@ -242,7 +256,7 @@ int main(int argc, char **argv) {
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &mean_event);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
@@ -251,11 +265,11 @@ int main(int argc, char **argv) {
 		mean[0] = (B[0] / (dataSize)); 
 		float fmean = (float)(B[0] / dataSize)/10.0f;
 
-		std::cout << "Mean = " << fmean << std::endl;
+		printData("Mean Temperature:", fmean, mean_event);
 
 		std::vector<mytype> C(1);
-		output_size = C.size() * sizeof(mytype);//size in bytes
 
+		output_size = C.size() * sizeof(mytype);//size in bytes
 													   //device - buffers
 		//cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, output_size);
@@ -277,20 +291,17 @@ int main(int argc, char **argv) {
 		kernel_2.setArg(3, buffer_D);
 
 																   //call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd_event);
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
 
 		float SD = (sqrt(C[0] / dataSize));
 
-		std::cout << "SD = " << SD << std::endl;
+		printData("Standard Deviation of Temperatures:", SD, sd_event);
 
 		time = clock() - time;
 		std::cout << "Total Calculation Time = " << time << std::endl;
-
-		std::cout << GetFullProfilingInfo(profile_event, ProfilingResolution::PROF_US) << endl;
-		std::cout << "Kernel execution time [ns]: " << profile_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - profile_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
@@ -298,3 +309,20 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
+
+
+/* 
+///////////////////////////////////////////////////////////////////////////////
+Maximum 378336
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+Minimum 378976
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+Mean 347584
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+Standard Deviation 365152
+///////////////////////////////////////////////////////////////////////////////
+Total Calculation Time = 352
+*/
