@@ -100,9 +100,9 @@ int main(int argc, char **argv) {
 	//detect any potential exceptions
 	try {
 		// File parsing
-		int dataSize = 100;//1873106;
+		int dataSize = 1873106;
 		time = clock() - time;
-		float* data = fscanFile("../../temp_lincolnshire_short.txt", dataSize);
+		float* data = fscanFile("../../temp_lincolnshire.txt", dataSize);
 		//string data = loadFile("../temp_lincolnshire_short.txt");
 		/*float temps[100] = { 0.0f };
 		int column = 0;
@@ -212,6 +212,32 @@ int main(int argc, char **argv) {
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
+		cl::Kernel kernel_0 = cl::Kernel(program, "reduce_max");
+		kernel_0.setArg(0, buffer_A);
+		kernel_0.setArg(1, buffer_B);
+		kernel_0.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+
+																   //call all kernels in a sequence
+		queue.enqueueNDRangeKernel(kernel_0, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+
+		//5.3 Copy the result from device to host
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+
+		std::cout << "Max = " << B << std::endl;
+
+		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
+		kernel_min.setArg(0, buffer_A);
+		kernel_min.setArg(1, buffer_B);
+		kernel_min.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+
+																   //call all kernels in a sequence
+		queue.enqueueNDRangeKernel(kernel_min, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+
+		//5.3 Copy the result from device to host
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+
+		std::cout << "Min = " << B << std::endl;
+
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
@@ -223,9 +249,6 @@ int main(int argc, char **argv) {
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-
-		time = clock() - time;
-		std::cout << "Sum time = " << time << std::endl;
 
 		//std::cout << "A = " << A << std::endl;
 		std::cout << "Sum = " << B << std::endl;
@@ -262,9 +285,13 @@ int main(int argc, char **argv) {
 		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
 
 		//5.3 Copy the result from device to host
-		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
 
-		std::cout << "SD Sum = " << B << std::endl;
+		std::cout << "SD Sum = " << C << std::endl;
+
+		float SD = sqrt(C[0] / dataSize);
+
+		std::cout << "SD = " << SD << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
