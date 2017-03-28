@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
 		std::vector<mytype> A(dataSize, 0);
 		for (int i = 0; i < dataSize; i++)
 		{
-			A[i] = data[i]*10; 
+			A[i] = data[i]*100; 
 		}
 		time = clock() - time;
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
@@ -206,6 +206,8 @@ int main(int argc, char **argv) {
 		cl::Event min_event;
 		cl::Event mean_event;
 		cl::Event sd_event;
+		cl::Event variance_event;
+		cl::Event sd2_event;
 
 		//host - output
 		//int *B;
@@ -234,7 +236,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		printData("Maximum Temperature:", B[0]/10, max_event);
+		printData("Maximum Temperature:", B[0]/100, max_event);
 
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
@@ -247,7 +249,7 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		printData("Minimum Temperature:", B[0] / 10, min_event);
+		printData("Minimum Temperature:", B[0] / 100, min_event);
 
 		//5.2 Setup and execute all kernels (i.e. device code)
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
@@ -261,9 +263,9 @@ int main(int argc, char **argv) {
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
-		std::vector<mytype> mean(1);
-		mean[0] = (B[0] / (dataSize)); 
-		float fmean = (float)(B[0] / dataSize)/10.0f;
+		int mean = 0;
+		mean = (B[0] / (dataSize)); 
+		float fmean = (float)(B[0] / dataSize)/100.0f;
 
 		printData("Mean Temperature:", fmean, mean_event);
 
@@ -275,30 +277,57 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_D(context, CL_MEM_READ_ONLY, output_size);
 
-		//Part 5 - device operations
-		time = clock() - time;
-
 		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_C, 0, 0, output_size);//zero B buffer on device memory
-		queue.enqueueWriteBuffer(buffer_D, CL_TRUE, 0, output_size, &mean[0]);
 
 															 //5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_add_4_pow");
+		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_standard_deviation");
 		kernel_2.setArg(0, buffer_A);
 		kernel_2.setArg(1, buffer_C);
 		kernel_2.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
-		kernel_2.setArg(3, buffer_D);
-
-																   //call all kernels in a sequence
+		kernel_2.setArg(3, mean);
 		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd_event);
+		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
+		float SD = (sqrt(C[0] / dataSize));
+		printData("Standard Deviation of Temperatures:", SD, sd_event);
+
+
+		vector<mytype> E(input_elements);
+		cl::Buffer buffer_E(context, CL_MEM_READ_WRITE, input_size);
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueReadBuffer(buffer_E, 0, 0, input_size, &E[0]);
+		cl::Kernel kernel_variance = cl::Kernel(program, "get_variance");
+		kernel_variance.setArg(0, buffer_A);
+		kernel_variance.setArg(1, buffer_E);
+		kernel_variance.setArg(2, mean);
+		//call all kernels in a sequence
+		queue.enqueueNDRangeKernel(kernel_variance, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
+		//5.3 Copy the result from device to host
+		queue.enqueueReadBuffer(buffer_E, CL_TRUE, 0, output_size, &E[0]);
+		//float SD = (sqrt([0] / dataSize));
+		printData("Variance", 0.0f, variance_event);
+
+
+
+		vector<mytype> F(1);
+		cl::Buffer buffer_F(context, CL_MEM_READ_WRITE, output_size);
+		cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add_4");
+		kernel_vsd.setArg(0, buffer_E);
+		kernel_vsd.setArg(1, buffer_F);
+		kernel_vsd.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+																   //call all kernels in a sequence
+		queue.enqueueNDRangeKernel(kernel_vsd, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd2_event);
 
 		//5.3 Copy the result from device to host
-		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
+		queue.enqueueReadBuffer(buffer_F, CL_TRUE, 0, output_size, &F[0]);
 
-		float SD = (sqrt(C[0] / dataSize));
+		mean = (F[0] / (dataSize));
+		fmean = (float)(F[0] / dataSize) / 100.0f;
+		float sd2 = sqrt(mean/10);
+		printData("Different SD:  ", sd2, sd2_event);
 
-		printData("Standard Deviation of Temperatures:", SD, sd_event);
+
 
 		time = clock() - time;
 		std::cout << "Total Calculation Time = " << time << std::endl;

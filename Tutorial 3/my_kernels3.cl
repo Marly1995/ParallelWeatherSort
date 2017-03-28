@@ -237,21 +237,26 @@ __kernel void reduce_min(__global const int *A, __global int *B, __local int *sc
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 	*/
-	if (!lid) {
+	if (!lid)
 		atomic_min(&B[0],scratch[lid]);
-	}
 }
+__kernel void get_variance(__global const int *A, __global int *B, int M)
+{ 
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
 
+	B[id] = A[id] - M;
+
+	B[id] =  (B[id] * B[id])/1000;
+}
 // sd reduce
-__kernel void reduce_add_4_pow(__global const int *A, __global int *B, __local int *scratch, __global int *M)
+__kernel void reduce_standard_deviation(__global const int *A, __global int *B, __local int *scratch, int M)
 { 
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
 
-	scratch[lid] = (A[id] - M[0]) * (A[id] - M[0])/100;
-	//printf("  %d  ", scratch[lid]);
-	//scratch[lid] = pown((A[id] - M[0]), 2);
+	scratch[lid] = ((A[id] - M) * (A[id] - M))/10000;
 
 	barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -259,7 +264,7 @@ __kernel void reduce_add_4_pow(__global const int *A, __global int *B, __local i
 	{ 
 		if(!(lid % (i*2)) && ((lid + i) < N))
 		{ 
-			scratch[lid] += scratch[lid+i];
+			scratch[lid] += (scratch[lid+i]);
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
