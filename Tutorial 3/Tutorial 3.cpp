@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 		std::cout << "Runinng on " << GetPlatformName(platform_id) << ", " << GetDeviceName(platform_id, device_id) << std::endl;
 
 		//create a queue to which we will push commands for the device
-		cl::CommandQueue queue(context);
+		cl::CommandQueue queue(context, CL_QUEUE_PROFILING_ENABLE);
 
 		//2.2 Load & build the device code
 		cl::Program::Sources sources;
@@ -190,6 +190,8 @@ int main(int argc, char **argv) {
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
 		size_t nr_groups = input_elements / local_size;
+
+		cl::Event profile_event;
 
 		//host - output
 		//int *B;
@@ -286,6 +288,9 @@ int main(int argc, char **argv) {
 
 		time = clock() - time;
 		std::cout << "Total Calculation Time = " << time << std::endl;
+
+		std::cout << GetFullProfilingInfo(profile_event, ProfilingResolution::PROF_US) << endl;
+		std::cout << "Kernel execution time [ns]: " << profile_event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - profile_event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
