@@ -101,6 +101,7 @@ __kernel void bitonic_sort(__global int *A)
 //	OLD CODE FROM WORKSHOPS
 ///////////////////////////
 //////////////////////////
+
 //fixed 4 step reduce
 __kernel void reduce_add_1(__global const int* A, __global int* B) {
 	int id = get_global_id(0);
@@ -196,6 +197,33 @@ __kernel void reduce_add_4(__global const int* A, __global int* B, __local int* 
 	if (!lid) {
 		atomic_add(&B[0],scratch[lid]);
 	}
+}
+
+// sd reduce
+__kernel void reduce_add_4_pow(__global const int *A, __global int *B, __local int *scratch, __global int *M)
+{ 
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+
+	scratch[lid] = pow((A[id] - M[0]), 2);
+
+	barrier()CLK_LOCAL_MEM_FENCE);
+
+	for (int i = 1; i < N; i*=2)
+	{ 
+		if(!(lid % (i*2)) && ((lid + i) < N))
+		{ 
+			scratch[lid] += scratch[lid+i];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	if(!lid)
+	{ 
+		atomic_add(&B[0], scratch[lid]);
+	}
+
 }
 
 //a very simple histogram implementation

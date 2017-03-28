@@ -97,15 +97,12 @@ int main(int argc, char **argv) {
 		else if (strcmp(argv[i], "-h") == 0) { print_help(); }
 	}
 
-	
-
-
 	//detect any potential exceptions
 	try {
 		// File parsing
-		int dataSize = 100;//1873106;
+		int dataSize = 1873106;
 		time = clock() - time;
-		float* data = fscanFile("../../temp_lincolnshire_short.txt", dataSize);
+		float* data = fscanFile("../../temp_lincolnshire.txt", dataSize);
 		//string data = loadFile("../temp_lincolnshire_short.txt");
 		/*float temps[100] = { 0.0f };
 		int column = 0;
@@ -176,7 +173,7 @@ int main(int argc, char **argv) {
 			A[i] = data[i]; 
 		}
 		time = clock() - time;
-		std::cout << time << std::endl;
+		std::cout << "int conv time = " << time << std::endl;
 
 		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
 		//if the total input length is divisible by the workgroup size
@@ -199,7 +196,9 @@ int main(int argc, char **argv) {
 		size_t nr_groups = input_elements / local_size;
 
 		//host - output
-		std::vector<mytype> B(input_elements);
+		//int *B;
+		//size_t output_size = sizeof(int);
+		std::vector<mytype> B(1);		
 		size_t output_size = B.size()*sizeof(mytype);//size in bytes
 
 		//device - buffers
@@ -214,22 +213,55 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
 
 		//5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "Sort_BitonicMergesortStart");
+		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
-//		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
+		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
 
 		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
 
 		//5.3 Copy the result from device to host
-		queue.enqueueReadBuffer(buffer_A, CL_TRUE, 0, output_size, &A[0]);
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 
 		time = clock() - time;
-		std::cout << "sort time = " << time << std::endl;
+		std::cout << "Sum time = " << time << std::endl;
 
-		std::cout << "A = " << A << std::endl;
-		std::cout << "B = " << B << std::endl;
+		//std::cout << "A = " << A << std::endl;
+		std::cout << "Sum = " << B << std::endl;
+
+		std::vector<mytype> mean(1);
+		mean[0] = B[0] / dataSize; 
+
+		std::cout << "Mean = " << mean << std::endl;
+
+		std::vector<mytype> C(1);
+		output_size = C.size() * sizeof(mytype);//size in bytes
+
+													   //device - buffers
+		//cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
+		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, output_size);
+		cl::Buffer buffer_D(context, CL_MEM_READ_ONLY, output_size);
+
+		//Part 5 - device operations
+		time = clock() - time;
+
+		//5.1 copy array A to and initialise other arrays on device memory
+		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueFillBuffer(buffer_C, 0, 0, output_size);//zero B buffer on device memory
+
+															 //5.2 Setup and execute all kernels (i.e. device code)
+		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
+		kernel_1.setArg(0, buffer_A);
+		kernel_1.setArg(1, buffer_C);
+		kernel_1.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+		kernel_1.setArg(3, buffer_D);
+
+																   //call all kernels in a sequence
+		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+
+		//5.3 Copy the result from device to host
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;
