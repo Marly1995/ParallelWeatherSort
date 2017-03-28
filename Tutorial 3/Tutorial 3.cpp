@@ -100,9 +100,9 @@ int main(int argc, char **argv) {
 	//detect any potential exceptions
 	try {
 		// File parsing
-		int dataSize = 1873106;
+		int dataSize = 100;//1873106;
 		time = clock() - time;
-		float* data = fscanFile("../../temp_lincolnshire.txt", dataSize);
+		float* data = fscanFile("../../temp_lincolnshire_short.txt", dataSize);
 		//string data = loadFile("../temp_lincolnshire_short.txt");
 		/*float temps[100] = { 0.0f };
 		int column = 0;
@@ -249,19 +249,22 @@ int main(int argc, char **argv) {
 		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_C, 0, 0, output_size);//zero B buffer on device memory
+		queue.enqueueWriteBuffer(buffer_D, CL_TRUE, 0, output_size, &mean[0]);
 
 															 //5.2 Setup and execute all kernels (i.e. device code)
-		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
-		kernel_1.setArg(0, buffer_A);
-		kernel_1.setArg(1, buffer_C);
-		kernel_1.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
-		kernel_1.setArg(3, buffer_D);
+		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_add_4_pow");
+		kernel_2.setArg(0, buffer_A);
+		kernel_2.setArg(1, buffer_C);
+		kernel_2.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
+		kernel_2.setArg(3, buffer_D);
 
 																   //call all kernels in a sequence
-		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
+		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size));
 
 		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+
+		std::cout << "SD Sum = " << B << std::endl;
 	}
 	catch (cl::Error err) {
 		std::cerr << "ERROR: " << err.what() << ", " << getErrorString(err.err()) << std::endl;

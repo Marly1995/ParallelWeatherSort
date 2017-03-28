@@ -84,7 +84,7 @@ __kernel void bitonic_sort(__global int *A)
 	int id = get_global_id(0);
 	int N = get_global_size(0);
 
-	for	(int i = 1; i < N/2; i*2)
+	for	(int i = 1; i < N/2; i*=2)
 	{ 
 		if(id%(i*4) < i*2)
 			bitonic_merge(id, A, i*2, false);
@@ -206,9 +206,10 @@ __kernel void reduce_add_4_pow(__global const int *A, __global int *B, __local i
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
 
-	scratch[lid] = pow((A[id] - M[0]), 2);
+	scratch[lid] = (A[id] - M[0]) * (A[id] - M[0]);
+	//scratch[lid] = pown((A[id] - M[0]), 2);
 
-	barrier()CLK_LOCAL_MEM_FENCE);
+	barrier(CLK_LOCAL_MEM_FENCE);
 
 	for (int i = 1; i < N; i*=2)
 	{ 
