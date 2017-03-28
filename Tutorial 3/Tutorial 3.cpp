@@ -173,24 +173,21 @@ int main(int argc, char **argv) {
 		}
 
 		typedef int mytype;
+		typedef float myfloat;
 
-		//Part 4 - memory allocation
-		//host - input	
 		std::vector<mytype> A(dataSize, 0);
+		std::vector<myfloat> FA(dataSize, 0);
 		for (int i = 0; i < dataSize; i++)
 		{
 			A[i] = data[i]*100; 
+			FA[i] = data[i];
 		}
 		time = clock() - time;
-		//the following part adjusts the length of the input vector so it can be run for a specific workgroup size
-		//if the total input length is divisible by the workgroup size
-		//this makes the code more efficient
+
 		size_t local_size = 32;
 
 		size_t padding_size = A.size() % local_size;
 
-		//if the input vector is not a multiple of the local_size
-		//insert additional neutral elements (0 for addition) so that the total will not be affected
 		if (padding_size) {
 			//create an extra vector with neutral values
 			std::vector<int> A_ext(local_size-padding_size, 0);
@@ -200,9 +197,11 @@ int main(int argc, char **argv) {
 
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
+		size_t finput_size = A.size() * sizeof(myfloat);
 		size_t nr_groups = input_elements / local_size;
 
 		cl::Event max_event;
+		cl::Event fmax_event;
 		cl::Event min_event;
 		cl::Event mean_event;
 		cl::Event sd_event;
@@ -214,55 +213,55 @@ int main(int argc, char **argv) {
 		//size_t output_size = sizeof(int);
 		std::vector<mytype> B(1);		
 		size_t output_size = B.size()*sizeof(mytype);//size in bytes
+		std::vector<myfloat> FB(1);
+		size_t foutput_size = B.size() * sizeof(myfloat);//size in bytes
 
 		//device - buffers
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 
-		//Part 5 - device operations
+		cl::Buffer buffer_FA(context, CL_MEM_READ_ONLY, finput_size);
+		cl::Buffer buffer_FB(context, CL_MEM_READ_WRITE, foutput_size);
 
-		//5.1 copy array A to and initialise other arrays on device memory
+
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);//zero B buffer on device memory
-
+		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		cl::Kernel kernel_0 = cl::Kernel(program, "reduce_max");
 		kernel_0.setArg(0, buffer_A);
 		kernel_0.setArg(1, buffer_B);
-		kernel_0.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
-
-																   //call all kernels in a sequence
+		kernel_0.setArg(2, cl::Local(local_size * sizeof(mytype)));
 		queue.enqueueNDRangeKernel(kernel_0, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &max_event);
-
-		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-
 		printData("Maximum Temperature:", B[0]/100, max_event);
+
+		// float
+		B[0] = 0;
+		queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, finput_size, &FA[0]);
+		queue.enqueueFillBuffer(buffer_FB, 0, 0, foutput_size);
+		cl::Kernel kernel_fmax = cl::Kernel(program, "reduce_add_3");
+		kernel_fmax.setArg(0, buffer_FA);
+		kernel_fmax.setArg(1, buffer_FB);
+		kernel_fmax.setArg(2, cl::Local(local_size * sizeof(myfloat)));
+		queue.enqueueNDRangeKernel(kernel_fmax, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &fmax_event);
+		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, foutput_size, &FB[0]);
+		printData("Maximum floating : ", FB[0], fmax_event);
+
 
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
 		kernel_min.setArg(1, buffer_B);
-		kernel_min.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
-
-																   //call all kernels in a sequence
+		kernel_min.setArg(2, cl::Local(local_size * sizeof(mytype)));
 		queue.enqueueNDRangeKernel(kernel_min, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &min_event);
-
-		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-
 		printData("Minimum Temperature:", B[0] / 100, min_event);
 
-		//5.2 Setup and execute all kernels (i.e. device code)
+
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
-
-		//call all kernels in a sequence
 		queue.enqueueNDRangeKernel(kernel_1, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &mean_event);
-
-		//5.3 Copy the result from device to host
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-
 		int mean = 0;
 		mean = (B[0] / (dataSize)); 
 		float fmean = (float)(B[0] / dataSize)/100.0f;

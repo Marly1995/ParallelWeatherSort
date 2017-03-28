@@ -151,7 +151,7 @@ __kernel void reduce_add_2(__global const int* A, __global int* B) {
 }
 
 //reduce using local memory (so called privatisation)
-__kernel void reduce_add_3(__global const int* A, __global int* B, __local int* scratch) {
+__kernel void reduce_add_3(__global const float* A, __global float* B, __local float* scratch) {
 	int id = get_global_id(0);
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
@@ -163,13 +163,17 @@ __kernel void reduce_add_3(__global const int* A, __global int* B, __local int* 
 
 	for (int i = 1; i < N; i *= 2) {
 		if (!(lid % (i * 2)) && ((lid + i) < N)) 
-			scratch[lid] += scratch[lid + i];
+			if(scratch[lid] < scratch[lid+i])
+				scratch[lid] = scratch[lid+i];
 
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 
 	//copy the cache to output array
-	B[id] = scratch[lid];
+	if(!lid){
+		if(scratch[lid] > B[0])
+		B[0] = scratch[lid];
+		}
 }
 
 //reduce using local memory + accumulation of local sums into a single location
