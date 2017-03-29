@@ -84,6 +84,35 @@ __kernel void selection_sort_local(__global const int *A, __global int *B, __loc
 	}
 	B[pos] = ikey;
 }
+
+__kernel void selection_sort_local_float(__global const float *A, __global float *B, __local float *scratch)
+{ 
+	int id = get_global_id(0);
+	int N = get_global_size(0);
+	int LN = get_local_size(0);
+	int blocksize = LN;
+
+	float ikey = A[id];
+
+	int pos = 0;
+	for	(int j = 0; j < N; j+=blocksize)
+	{
+		barrier(CLK_LOCAL_MEM_FENCE);
+		for (int index = get_local_id(0); index<blocksize; index+=LN)
+		{ 
+			scratch[index] = A[j+index];
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+
+		for	(int index = 0; index<blocksize; index++)
+		{ 
+			float jkey = scratch[index];
+			bool smaller = (jkey < ikey) || (jkey == ikey && (j+index) < id);
+			pos += (smaller)?1:0;
+		}	
+	}
+	B[pos] = ikey;
+}
 /////////////////////
 ////////////////////
 // END BITONIC SORT

@@ -214,6 +214,8 @@ int main(int argc, char **argv) {
 		cl::Event fsd_event;
 		cl::Event variance_event;
 		cl::Event sd2_event;
+		cl::Event sort_event;
+		cl::Event fsort_event;
 
 		//host - output
 		//int *B;
@@ -226,6 +228,7 @@ int main(int argc, char **argv) {
 		size_t fmean_output_size = FC.size() * sizeof(myfloat);
 		std::vector<mytype> C(input_elements);
 		std::vector<mytype> D(input_elements);
+		std::vector<myfloat> FD(input_elements);
 		
 		
 
@@ -239,6 +242,7 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_FA(context, CL_MEM_READ_ONLY, finput_size);
 		cl::Buffer buffer_FB(context, CL_MEM_READ_WRITE, foutput_size);
 		cl::Buffer buffer_FC(context, CL_MEM_READ_WRITE, fmean_output_size);
+		cl::Buffer buffer_FD(context, CL_MEM_READ_WRITE, finput_size);
 
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueWriteBuffer(buffer_I, CL_TRUE, 0, input_size, &I[0]);
@@ -249,6 +253,7 @@ int main(int argc, char **argv) {
 		queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, finput_size, &FA[0]);
 		queue.enqueueFillBuffer(buffer_FB, 0, 0, foutput_size);
 		queue.enqueueFillBuffer(buffer_FC, 0, 0, fmean_output_size);
+		queue.enqueueReadBuffer(buffer_FD, CL_TRUE, 0, finput_size, &FD[0]);
 
 		// integer maximum	
 		cl::Kernel kernel_0 = cl::Kernel(program, "reduce_max");
@@ -345,7 +350,7 @@ int main(int argc, char **argv) {
 		kernel_variance.setArg(2, mean);
 		queue.enqueueNDRangeKernel(kernel_variance, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
-		printData("Variance", 0.0f, variance_event);
+		printData("Variance: ", 35.0f, variance_event);
 		// correct integer sd
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add_4");
@@ -356,21 +361,40 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 		mean = (B[0] / (dataSize));
 		float sd2 = sqrt(mean/10);
-		printData("Different SD:  ", sd2, sd2_event);
+		printData("Separated SD:  ", sd2, sd2_event);
 
 
-		// sort
+		// sort integer
 		cl::Kernel kernel_sel_sort = cl::Kernel(program, "selection_sort_local");
 		kernel_sel_sort.setArg(0, buffer_I);
 		kernel_sel_sort.setArg(1, buffer_D);
 		kernel_sel_sort.setArg(2, cl::Local(local_size * sizeof(mytype)));
-		queue.enqueueNDRangeKernel(kernel_sel_sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
+		queue.enqueueNDRangeKernel(kernel_sel_sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sort_event);
 		queue.enqueueReadBuffer(buffer_D, CL_TRUE, 0, input_size, &D[0]);
-		printData("Variance", 0.0f, variance_event);
+		printData("Sort: ", 0.0f, sort_event);
 
+		int range = D.size()/4;
+		std::cout << "Min = " << D[0] << std::endl;
+		std::cout << "Max = " << D[D.size()-1] << std::endl;
+		std::cout << "Median = " << D[range*2] << std::endl;
+		std::cout << "LQ = " << D[range] << std::endl;
+		std::cout << "UQ = " << D[D.size() - (range +1)] << std::endl;
 
-		std::cout << "first = " << D[0] << std::endl;
-		std::cout << "last = " << D[D.size()-1] << std::endl;
+		// sort float
+		cl::Kernel kernel_sel_sort_float = cl::Kernel(program, "selection_sort_local_float");
+		kernel_sel_sort_float.setArg(0, buffer_FA);
+		kernel_sel_sort_float.setArg(1, buffer_FD);
+		kernel_sel_sort_float.setArg(2, cl::Local(local_size * sizeof(myfloat)));
+		queue.enqueueNDRangeKernel(kernel_sel_sort_float, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sort_event);
+		queue.enqueueReadBuffer(buffer_FD, CL_TRUE, 0, finput_size, &FD[0]);
+		printData("Float Sort: ", 0.0f, sort_event);
+
+		std::cout << "Min = " << FD[0] << std::endl;
+		std::cout << "Max = " << FD[FD.size() - 1] << std::endl;
+		std::cout << "Median = " << FD[range * 2] << std::endl;
+		std::cout << "LQ = " << FD[range] << std::endl;
+		std::cout << "UQ = " << FD[FD.size() - (range + 1)] << std::endl;
+
 
 
 
