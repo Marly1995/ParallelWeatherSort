@@ -294,16 +294,20 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_FD, CL_TRUE, 0, finput_size, &FD[0]);
 
 		// TODO: make all of these functions
-		// integer maximum	
+		// integer maximum using atomic method
+		// with current dataset faster than reduction method
+		// time: ~120000 ns
 		cl::Kernel kernel_0 = cl::Kernel(program, "reduce_max");
 		kernel_0.setArg(0, buffer_A);
 		kernel_0.setArg(1, buffer_B);
 		kernel_0.setArg(2, cl::Local(local_size * sizeof(mytype)));
 		queue.enqueueNDRangeKernel(kernel_0, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &max_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-		printData("Maximum Temperature:", B[0]/100, max_event);
+		printData("Maximum Temperature:", B[0]/100, max_event); 
 
-		// floating Maximum
+		// floating Maximum using reduction and global adressing
+		// slower than atmoic method but this is not usable on floats
+		// time: ~ 360000 ns
 		cl::Kernel kernel_fmax = cl::Kernel(program, "reduce_max_float");
 		kernel_fmax.setArg(0, buffer_FA);
 		kernel_fmax.setArg(1, buffer_FB);
@@ -312,7 +316,10 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_FB, CL_TRUE, 0, foutput_size, &FB[0]);
 		printData("Maximum floating : ", FB[0], fmax_event);
 
-		// initeger minimum
+		// integer minimum using atomic method
+		// with current dataset faster than reduction method
+		// time: ~120000 ns
+		cl::Kernel kernel_0
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
 		kernel_min.setArg(1, buffer_B);
@@ -321,7 +328,9 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 		printData("Minimum Temperature:", B[0] / 100, min_event);
 
-		// floating Minimum
+		// floating minimum using reduction and global adressing
+		// slower than atmoic method but this is not usable on floats
+		// time: ~360000 ns
 		cl::Kernel kernel_fmin = cl::Kernel(program, "reduce_min_float");
 		kernel_fmin.setArg(0, buffer_FA);
 		kernel_fmin.setArg(1, buffer_FB);
@@ -330,7 +339,10 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_FB, CL_TRUE, 0, foutput_size, &FB[0]);
 		printData("Minimum floating: ", FB[0], fmin_event);
 
-		// integer mean
+		// Integer mean using atmoic add
+		// faster than reduction method but only usable on ints
+		// sum of data is recieved nd divided by dataset size to get mean
+		// time: ~320000 ns
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
@@ -342,7 +354,10 @@ int main(int argc, char **argv) {
 		float fmean = (float)(B[0] / dataSize)/100.0f;
 		printData("Mean Temperature:", fmean, mean_event);
 
-		// floating mean
+		// float mean using reduction to return array of work group sums
+		// fast on current data set but additional kernals could be used to further reduce the data
+		// work group sums and added and then devied by the datasize to get the mean
+		// time: ~320000 ns + ~30000 ns from sequential addition
 		cl::Kernel kernel_fmean = cl::Kernel(program, "reduce_add_float");
 		kernel_fmean.setArg(0, buffer_FA);
 		kernel_fmean.setArg(1, buffer_FC);
@@ -354,7 +369,7 @@ int main(int argc, char **argv) {
 		fmean = fsum / (dataSize);
 		printData("Mean floating:", fmean, fmean_event);
 
-		// FIND OUT WHY THIS IS NEEDED
+		// need to requeue buffer to remove current data
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		// integer sd
 		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_standard_deviation");
