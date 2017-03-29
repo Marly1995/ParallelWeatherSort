@@ -371,7 +371,7 @@ int main(int argc, char **argv) {
 
 		// need to requeue buffer to remove current data
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
-		// integer sd
+		// integer standard deviation using atomic add 
 		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_standard_deviation");
 		kernel_2.setArg(0, buffer_A);
 		kernel_2.setArg(1, buffer_B);
@@ -379,10 +379,10 @@ int main(int argc, char **argv) {
 		kernel_2.setArg(3, mean);
 		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-		float SD = (sqrt((B[0] /10)/ dataSize));
+		float SD = (sqrt((B[0] /10)/ dataSize)); // need to divide by 10 here as division earlier displaces int values too much
 		printData("SD: ", SD, sd_event);
 
-		// floating sd
+		// float standard deviation using reduction and sequential summation of work groups
 		queue.enqueueFillBuffer(buffer_FC, 0, 0, fmean_output_size);
 		cl::Kernel kernel_fsd = cl::Kernel(program, "reduce_standard_deviation_float");
 		kernel_fsd.setArg(0, buffer_FA);
@@ -397,7 +397,8 @@ int main(int argc, char **argv) {
 		SD = (sqrt(fmean));
 		printData("floating SD: ", SD, fsd_event);
 
-		// integer variance
+		// alternative method for variance and standard deviation calculation with separate kernel for variance
+		// slower and more cumbersome than other method
 		cl::Kernel kernel_variance = cl::Kernel(program, "get_variance");
 		kernel_variance.setArg(0, buffer_A);
 		kernel_variance.setArg(1, buffer_C);
@@ -405,7 +406,7 @@ int main(int argc, char **argv) {
 		queue.enqueueNDRangeKernel(kernel_variance, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
 		printData("Variance: ", 35.0f, variance_event);
-		// correct integer sd
+		
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add_4");
 		kernel_vsd.setArg(0, buffer_C);
@@ -418,7 +419,8 @@ int main(int argc, char **argv) {
 		printData("Separated SD:  ", sd2, sd2_event);
 
 
-		// sort integer
+		// sort integer values using selection sort
+		// sort inefficient and does not reall benefit from paralization
 		cl::Kernel kernel_sel_sort = cl::Kernel(program, "selection_sort_local");
 		kernel_sel_sort.setArg(0, buffer_I);
 		kernel_sel_sort.setArg(1, buffer_D);
