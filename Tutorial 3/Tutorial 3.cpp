@@ -176,9 +176,11 @@ int main(int argc, char **argv) {
 		typedef float myfloat;
 
 		std::vector<mytype> A(dataSize, 0);
+		std::vector<mytype> I(dataSize, 0);
 		std::vector<myfloat> FA(dataSize, 0);
 		for (int i = 0; i < dataSize; i++)
 		{
+			I[i] = data[i];
 			A[i] = data[i]*100; 
 			FA[i] = data[i];
 		}
@@ -223,6 +225,7 @@ int main(int argc, char **argv) {
 		std::vector<myfloat> FC(input_elements);
 		size_t fmean_output_size = FC.size() * sizeof(myfloat);
 		std::vector<mytype> C(input_elements);
+		std::vector<mytype> D(input_elements);
 		
 		
 
@@ -230,14 +233,18 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
 		cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, input_size);
+		cl::Buffer buffer_D(context, CL_MEM_READ_WRITE, input_size);
+		cl::Buffer buffer_I(context, CL_MEM_READ_ONLY, input_size);
 
 		cl::Buffer buffer_FA(context, CL_MEM_READ_ONLY, finput_size);
 		cl::Buffer buffer_FB(context, CL_MEM_READ_WRITE, foutput_size);
 		cl::Buffer buffer_FC(context, CL_MEM_READ_WRITE, fmean_output_size);
 
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
+		queue.enqueueWriteBuffer(buffer_I, CL_TRUE, 0, input_size, &I[0]);
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		queue.enqueueReadBuffer(buffer_C, 0, 0, input_size, &C[0]);
+		queue.enqueueReadBuffer(buffer_D, 0, 0, input_size, &D[0]);
 
 		queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, finput_size, &FA[0]);
 		queue.enqueueFillBuffer(buffer_FB, 0, 0, foutput_size);
@@ -350,6 +357,20 @@ int main(int argc, char **argv) {
 		mean = (B[0] / (dataSize));
 		float sd2 = sqrt(mean/10);
 		printData("Different SD:  ", sd2, sd2_event);
+
+
+		// sort
+		cl::Kernel kernel_sel_sort = cl::Kernel(program, "selection_sort");
+		kernel_sel_sort.setArg(0, buffer_I);
+		kernel_sel_sort.setArg(1, buffer_D);
+		queue.enqueueNDRangeKernel(kernel_sel_sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
+		queue.enqueueReadBuffer(buffer_D, CL_TRUE, 0, input_size, &D[0]);
+		printData("Variance", 0.0f, variance_event);
+
+
+		//std::cout << "unsorted = " << I << std::endl;
+		//std::cout << "sorted = " << D << std::endl;
+
 
 
 		time = clock() - time;
