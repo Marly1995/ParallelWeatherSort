@@ -282,7 +282,7 @@ int main(int argc, char **argv) {
 		printData("Mean Temperature:", fmean, mean_event);
 
 
-		std::vector<mytype> FC(A.size(), 0);
+		std::vector<myfloat> FC(input_elements);
 		foutput_size = FC.size() * sizeof(myfloat);
 		cl::Buffer buffer_FC(context, CL_MEM_READ_WRITE, foutput_size);
 		// floating mean
@@ -295,14 +295,12 @@ int main(int argc, char **argv) {
 		queue.enqueueNDRangeKernel(kernel_fmean, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &fmean_event);
 		queue.enqueueReadBuffer(buffer_FC, CL_TRUE, 0, foutput_size, &FC[0]);
 		float fsum = 0.0f;
-		int index = 0;
-		for (int i = 0; i < FC.size(); i++)
+		for (int i = 0; i <= nr_groups; i++)
 		{
 			fsum += FC[i];
-			index++;
 		}
-		fmean = fsum / index;
-		printData("Mean floating:", fsum, fmean_event);
+		fmean = fsum / (dataSize);
+		printData("Mean floating:", fmean, fmean_event);
 
 
 
