@@ -31,6 +31,38 @@ __kernel void oddeven_sort(__global int *A)
 		}
 	}
 }
+
+__kernel void oddeven_selection_sort(__global const int *A, __global int *B)
+{ 
+	int id = get_global_id(0);
+	int N = get_global_size(0);
+
+	int ikey = A[id];
+
+	int pos = 0;
+	for (int i = 0; i < N; i += 2)
+	{ 
+		if(id%2 == 1 && id+1 < N)
+		{ 
+			int jkey = A[i];
+			//cmpxchg(&A[id], &A[id+1]); // odd
+			bool smaller = (jkey < ikey) || (jkey == ikey && i < id);
+			pos -= (smaller)?1:0;
+		}
+
+		barrier(CLK_GLOBAL_MEM_FENCE);
+
+		if(id%2 == 0 && id+1 < N)
+		{
+			int jkey = A[i];			
+			bool smaller = (jkey < ikey) || (jkey == ikey && i < id);
+			pos += (smaller)?1:0;
+			//cmpxchg(&A[id], &A[id+1]); //  even
+		}
+	}
+
+	B[pos] = ikey;
+}
 //////////////////////
 /////////////////////
 // END ODD EVEN SORT

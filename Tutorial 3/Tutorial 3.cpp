@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 	//detect any potential exceptions
 	try {
 		// File parsing
-		int dataSize = 1873106;
+		int dataSize = 100;//1873106;
 		time = clock() - time;
 		float* data = fscanFile("../../temp_lincolnshire.txt", dataSize);
 		//string data = loadFile("../temp_lincolnshire_short.txt");
@@ -379,6 +379,7 @@ int main(int argc, char **argv) {
 		std::cout << "Median = " << D[range*2] << std::endl;
 		std::cout << "LQ = " << D[range] << std::endl;
 		std::cout << "UQ = " << D[D.size() - (range +1)] << std::endl;
+
 
 		// sort float
 		cl::Kernel kernel_sel_sort_float = cl::Kernel(program, "selection_sort_local_float");
