@@ -191,19 +191,23 @@ int main(int argc, char **argv) {
 		if (padding_size) {
 			//create an extra vector with neutral values
 			std::vector<int> A_ext(local_size-padding_size, 0);
+			std::vector<float> FA_ext(local_size - padding_size, 0);
 			//append that extra vector to our input
 			A.insert(A.end(), A_ext.begin(), A_ext.end());
+			FA.insert(FA.end(), FA_ext.begin(), FA_ext.end());
 		}
 
 		size_t input_elements = A.size();//number of input elements
 		size_t input_size = A.size()*sizeof(mytype);//size in bytes
-		size_t finput_size = A.size() * sizeof(myfloat);
+		size_t finput_size = FA.size() * sizeof(myfloat);
 		size_t nr_groups = input_elements / local_size;
 
 		cl::Event max_event;
 		cl::Event fmax_event;
 		cl::Event min_event;
+		cl::Event fmin_event;
 		cl::Event mean_event;
+		cl::Event fmean_event;
 		cl::Event sd_event;
 		cl::Event variance_event;
 		cl::Event sd2_event;
@@ -223,7 +227,7 @@ int main(int argc, char **argv) {
 		cl::Buffer buffer_FA(context, CL_MEM_READ_ONLY, finput_size);
 		cl::Buffer buffer_FB(context, CL_MEM_READ_WRITE, foutput_size);
 
-
+		// integer maximum
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		cl::Kernel kernel_0 = cl::Kernel(program, "reduce_max");
@@ -234,19 +238,18 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 		printData("Maximum Temperature:", B[0]/100, max_event);
 
-		// float
-		B[0] = 0;
+		// floating Maximum
 		queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, finput_size, &FA[0]);
 		queue.enqueueFillBuffer(buffer_FB, 0, 0, foutput_size);
-		cl::Kernel kernel_fmax = cl::Kernel(program, "reduce_add_3");
+		cl::Kernel kernel_fmax = cl::Kernel(program, "reduce_max_float");
 		kernel_fmax.setArg(0, buffer_FA);
 		kernel_fmax.setArg(1, buffer_FB);
 		kernel_fmax.setArg(2, cl::Local(local_size * sizeof(myfloat)));
 		queue.enqueueNDRangeKernel(kernel_fmax, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &fmax_event);
-		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, foutput_size, &FB[0]);
+		queue.enqueueReadBuffer(buffer_FB, CL_TRUE, 0, foutput_size, &FB[0]);
 		printData("Maximum floating : ", FB[0], fmax_event);
 
-
+		// initeger minimum
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
 		kernel_min.setArg(1, buffer_B);
@@ -255,7 +258,18 @@ int main(int argc, char **argv) {
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
 		printData("Minimum Temperature:", B[0] / 100, min_event);
 
+		// floating Minimum
+		queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, finput_size, &FA[0]);
+		queue.enqueueFillBuffer(buffer_FB, 0, 0, foutput_size);
+		cl::Kernel kernel_fmin = cl::Kernel(program, "reduce_min_float");
+		kernel_fmin.setArg(0, buffer_FA);
+		kernel_fmin.setArg(1, buffer_FB);
+		kernel_fmin.setArg(2, cl::Local(local_size * sizeof(myfloat)));
+		queue.enqueueNDRangeKernel(kernel_fmin, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &fmin_event);
+		queue.enqueueReadBuffer(buffer_FB, CL_TRUE, 0, foutput_size, &FB[0]);
+		printData("Minimum floating : ", FB[0], fmin_event);
 
+		// integer mean
 		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
@@ -265,22 +279,39 @@ int main(int argc, char **argv) {
 		int mean = 0;
 		mean = (B[0] / (dataSize)); 
 		float fmean = (float)(B[0] / dataSize)/100.0f;
-
 		printData("Mean Temperature:", fmean, mean_event);
 
-		std::vector<mytype> C(1);
 
-		output_size = C.size() * sizeof(mytype);//size in bytes
-													   //device - buffers
-		//cl::Buffer buffer_A(context, CL_MEM_READ_ONLY, input_size);
+		std::vector<mytype> FC(A.size(), 0);
+		foutput_size = FC.size() * sizeof(myfloat);
+		cl::Buffer buffer_FC(context, CL_MEM_READ_WRITE, foutput_size);
+		// floating mean
+		queue.enqueueWriteBuffer(buffer_FA, CL_TRUE, 0, finput_size, &FA[0]);
+		queue.enqueueFillBuffer(buffer_FC, 0, 0, foutput_size);
+		cl::Kernel kernel_fmean = cl::Kernel(program, "reduce_add_float");
+		kernel_fmean.setArg(0, buffer_FA);
+		kernel_fmean.setArg(1, buffer_FC);
+		kernel_fmean.setArg(2, cl::Local(local_size * sizeof(myfloat)));//local memory size
+		queue.enqueueNDRangeKernel(kernel_fmean, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &fmean_event);
+		queue.enqueueReadBuffer(buffer_FC, CL_TRUE, 0, foutput_size, &FC[0]);
+		float fsum = 0.0f;
+		int index = 0;
+		for (int i = 0; i < FC.size(); i++)
+		{
+			fsum += FC[i];
+			index++;
+		}
+		fmean = fsum / index;
+		printData("Mean floating:", fsum, fmean_event);
+
+
+
+		std::vector<mytype> C(1);
+		output_size = C.size() * sizeof(mytype);
 		cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, output_size);
 		cl::Buffer buffer_D(context, CL_MEM_READ_ONLY, output_size);
-
-		//5.1 copy array A to and initialise other arrays on device memory
 		queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, input_size, &A[0]);
-		queue.enqueueFillBuffer(buffer_C, 0, 0, output_size);//zero B buffer on device memory
-
-															 //5.2 Setup and execute all kernels (i.e. device code)
+		queue.enqueueFillBuffer(buffer_C, 0, 0, output_size);
 		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_standard_deviation");
 		kernel_2.setArg(0, buffer_A);
 		kernel_2.setArg(1, buffer_C);
@@ -289,7 +320,7 @@ int main(int argc, char **argv) {
 		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd_event);
 		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
 		float SD = (sqrt(C[0] / dataSize));
-		printData("Standard Deviation of Temperatures:", SD, sd_event);
+		printData("SD: ", SD, sd_event);
 
 
 		vector<mytype> E(input_elements);
