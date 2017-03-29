@@ -313,7 +313,7 @@ int main(int argc, char **argv) {
 		kernel_2.setArg(3, mean);
 		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-		float SD = (sqrt(B[0] / dataSize));
+		float SD = (sqrt((B[0] /10)/ dataSize));
 		printData("SD: ", SD, sd_event);
 
 		// floating sd
@@ -324,7 +324,7 @@ int main(int argc, char **argv) {
 		kernel_fsd.setArg(2, cl::Local(local_size * sizeof(myfloat)));//local memory size
 		kernel_fsd.setArg(3, fmean);
 		queue.enqueueNDRangeKernel(kernel_fsd, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &fsd_event);
-		queue.enqueueReadBuffer(buffer_FC, CL_TRUE, 0, output_size, &FC[0]);
+		queue.enqueueReadBuffer(buffer_FC, CL_TRUE, 0, fmean_output_size, &FC[0]);
 		fsum = 0.0f;
 		for (int i = 0; i <= nr_groups; i++) { fsum += FC[i]; }
 		fmean = fsum / (dataSize);
