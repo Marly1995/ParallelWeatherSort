@@ -306,6 +306,32 @@ __kernel void reduce_standard_deviation(__global const int *A, __global int *B, 
 
 }
 
+__kernel void reduce_standard_deviation_float(__global const float *A, __global float *B, __local float *scratch, float M)
+{ 
+	int id = get_global_id(0);
+	int lid = get_local_id(0);
+	int N = get_local_size(0);
+	int gid = get_group_id(0);
+
+	scratch[lid] = ((A[id] - M) * (A[id] - M));//pown(A[id] - M, 2);
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	for (int i = 1; i < N; i*=2)
+	{ 
+		if(!(lid % (i*2)) && ((lid + i) < N))
+		{ 
+			scratch[lid] += (scratch[lid+i]);
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+
+	if (!lid) 
+	{
+		B[gid] = scratch[lid];
+	}
+}
+
 //a very simple histogram implementation
 __kernel void hist_simple(__global const int* A, __global int* H) { 
 	int id = get_global_id(0);
