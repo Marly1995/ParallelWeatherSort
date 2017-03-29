@@ -360,16 +360,17 @@ int main(int argc, char **argv) {
 
 
 		// sort
-		cl::Kernel kernel_sel_sort = cl::Kernel(program, "selection_sort");
+		cl::Kernel kernel_sel_sort = cl::Kernel(program, "selection_sort_local");
 		kernel_sel_sort.setArg(0, buffer_I);
 		kernel_sel_sort.setArg(1, buffer_D);
+		kernel_sel_sort.setArg(2, cl::Local(local_size * sizeof(mytype)));
 		queue.enqueueNDRangeKernel(kernel_sel_sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
 		queue.enqueueReadBuffer(buffer_D, CL_TRUE, 0, input_size, &D[0]);
 		printData("Variance", 0.0f, variance_event);
 
 
-		//std::cout << "unsorted = " << I << std::endl;
-		//std::cout << "sorted = " << D << std::endl;
+		std::cout << "first = " << D[0] << std::endl;
+		std::cout << "last = " << D[D.size()-1] << std::endl;
 
 
 
