@@ -317,7 +317,7 @@ __kernel void reduce_standard_deviation(__global const int *A, __global int *B, 
 	int lid = get_local_id(0);
 	int N = get_local_size(0);
 
-	scratch[lid] = ((A[id] - M) * (A[id] - M))/1000;// calculate variance and then divide by 1000 to prevent data loss
+	scratch[lid] = ((A[id] - M) * (A[id] - M));// calculate variance and then divide by 1000 to prevent data loss
 
 	barrier(CLK_LOCAL_MEM_FENCE);
 

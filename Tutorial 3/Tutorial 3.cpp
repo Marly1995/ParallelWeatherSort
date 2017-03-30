@@ -95,14 +95,12 @@ vector<float> parseData(string data, int dataSize)
 // Function to print results
 void printData(string info, float result, cl::Event event)
 {
-	std::cout << "///////////////////////////////////////////////////////////////////////////////" << std::endl;
+	std::cout << "/////////////////////////////////////////" << std::endl;
 	std::cout << info << result << std::endl;
 	//std::cout << "" << std::endl;
 	//std::cout << GetFullProfilingInfo(event, ProfilingResolution::PROF_US) << endl;
 	//std::cout << "" << std::endl;
 	std::cout << "Kernel execution time [ns]: " << event.getProfilingInfo<CL_PROFILING_COMMAND_END>() - event.getProfilingInfo<CL_PROFILING_COMMAND_START>() << std::endl;
-	std::cout << "///////////////////////////////////////////////////////////////////////////////" << std::endl;
-
 }
 
 int main(int argc, char **argv) {
@@ -347,13 +345,13 @@ int main(int argc, char **argv) {
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
 		// integer standard deviation using atomic add 
 		cl::Kernel kernel_2 = cl::Kernel(program, "reduce_standard_deviation");
-		kernel_2.setArg(0, buffer_A);
+		kernel_2.setArg(0, buffer_I);
 		kernel_2.setArg(1, buffer_B);
 		kernel_2.setArg(2, cl::Local(local_size * sizeof(mytype)));//local memory size
 		kernel_2.setArg(3, mean);
 		queue.enqueueNDRangeKernel(kernel_2, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd_event);
 		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-		float SD = (sqrt((B[0] /10)/ dataSize)); // need to divide by 10 here as division earlier displaces int values too much
+		float SD = (sqrt((B[0])/ dataSize)); // need to divide by 10 here as division earlier displaces int values too much
 		printData("SD: ", SD, sd_event);
 
 		// float standard deviation using reduction and sequential summation of work groups
@@ -373,24 +371,25 @@ int main(int argc, char **argv) {
 
 		// alternative method for variance and standard deviation calculation with separate kernel for variance
 		// slower and more cumbersome than other method
-		cl::Kernel kernel_variance = cl::Kernel(program, "get_variance");
-		kernel_variance.setArg(0, buffer_A);
-		kernel_variance.setArg(1, buffer_C);
-		kernel_variance.setArg(2, mean);
-		queue.enqueueNDRangeKernel(kernel_variance, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
-		queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
-		printData("Variance: ", 35.0f, variance_event);
-		
-		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
-		cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add");
-		kernel_vsd.setArg(0, buffer_C);
-		kernel_vsd.setArg(1, buffer_B);
-		kernel_vsd.setArg(2, cl::Local(local_size * sizeof(mytype)));
-		queue.enqueueNDRangeKernel(kernel_vsd, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd2_event);
-		queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
-		mean = (B[0] / (dataSize));
-		float sd2 = sqrt(mean/10);
-		printData("Separated SD:  ", sd2, sd2_event);
+		//cl::Kernel kernel_variance = cl::Kernel(program, "get_variance");
+
+		//kernel_variance.setArg(0, buffer_A);
+		//kernel_variance.setArg(1, buffer_C);
+		//kernel_variance.setArg(2, mean);
+		//queue.enqueueNDRangeKernel(kernel_variance, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &variance_event);
+		//queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, output_size, &C[0]);
+		//printData("Variance: ", 35.0f, variance_event);
+		//
+		//queu e.enqueueFillBuffer(buffer_B, 0, 0, output_size);
+		//cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add");
+		//kernel_vsd.setArg(0, buffer_C);
+		//kernel_vsd.setArg(1, buffer_B);
+		//kernel_vsd.setArg(2, cl::Local(local_size * sizeof(mytype)));
+		//queue.enqueueNDRangeKernel(kernel_vsd, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sd2_event);
+		//queue.enqueueReadBuffer(buffer_B, CL_TRUE, 0, output_size, &B[0]);
+		//mean = (B[0] / (dataSize));
+		//float sd2 = sqrt(mean/10);
+		//printData("Separated SD:  ", sd2, sd2_event);
 
 
 		// sort integer values using selection sort
@@ -400,9 +399,9 @@ int main(int argc, char **argv) {
 		kernel_sel_sort.setArg(0, buffer_I);
 		kernel_sel_sort.setArg(1, buffer_D);
 		kernel_sel_sort.setArg(2, cl::Local(local_size * sizeof(mytype)));
-		queue.enqueueNDRangeKernel(kernel_sel_sort, cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sort_event);
+		queue.enqueueNDRangeKernel(kernel_sel_sort,  cl::NullRange, cl::NDRange(input_elements), cl::NDRange(local_size), NULL, &sort_event);
 		queue.enqueueReadBuffer(buffer_D, CL_TRUE, 0, input_size, &D[0]);
-		printData("Sort: ", 0.0f, sort_event);
+		printData("Integer Sort ", 0.0f, sort_event);
 
 		int range = D.size()/4;
 		std::cout << "Min = " << D[0] << std::endl;
