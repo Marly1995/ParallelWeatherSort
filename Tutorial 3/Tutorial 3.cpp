@@ -120,39 +120,14 @@ int main(int argc, char **argv) {
 
 	//detect any potential exceptions
 	try {
-		// File parsing
-		int dataSize = 100;//1873106;
+		// File parsing using fscanf or if stream
+		int dataSize = 1873106;
 		time = clock() - time;
-		float* data = fscanFile("../../temp_lincolnshire.txt", dataSize);
-		//string data = loadFile("../temp_lincolnshire_short.txt");
-		/*float temps[100] = { 0.0f };
-		int column = 0;
-		int index = 0;
-		string num;
-		for (int i = 0; i < data.size(); i++)
-		{
-		if (column == 6)
-		{
-		temps[index] = stof(num);
-		index++;
-		num.clear();
-		column = 1;
-		}
-		if (column == 5)
-		{
-		num += data[i];
-		}
-		if (data[i] == ' ')
-		{
-		column++;
-		}
-		if (!isalpha(data[i]))
-		{
-		column++;
-		}
-		}*/
+		//float* data = fscanFile("../../temp_lincolnshire.txt", dataSize);
+		string dataString = loadFile("../../temp_lincolnshire.txt");
+		std::vector<float> data = parseData(dataString, dataSize);
 		time = clock() - time;
-		std::cout << "Time to read and parse file [s]: " << time << std::endl;
+		std::cout << "Time to read and parse file [ms]: " << time << std::endl;
 
 		//Part 2 - host operations
 		//2.1 Select computing devices
@@ -319,7 +294,6 @@ int main(int argc, char **argv) {
 		// integer minimum using atomic method
 		// with current dataset faster than reduction method
 		// time: ~120000 ns
-		cl::Kernel kernel_0
 		cl::Kernel kernel_min = cl::Kernel(program, "reduce_min");
 		kernel_min.setArg(0, buffer_A);
 		kernel_min.setArg(1, buffer_B);
@@ -343,7 +317,7 @@ int main(int argc, char **argv) {
 		// faster than reduction method but only usable on ints
 		// sum of data is recieved nd divided by dataset size to get mean
 		// time: ~320000 ns
-		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add_4");
+		cl::Kernel kernel_1 = cl::Kernel(program, "reduce_add");
 		kernel_1.setArg(0, buffer_A);
 		kernel_1.setArg(1, buffer_B);
 		kernel_1.setArg(2, cl::Local(local_size*sizeof(mytype)));//local memory size
@@ -408,7 +382,7 @@ int main(int argc, char **argv) {
 		printData("Variance: ", 35.0f, variance_event);
 		
 		queue.enqueueFillBuffer(buffer_B, 0, 0, output_size);
-		cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add_4");
+		cl::Kernel kernel_vsd = cl::Kernel(program, "reduce_add");
 		kernel_vsd.setArg(0, buffer_C);
 		kernel_vsd.setArg(1, buffer_B);
 		kernel_vsd.setArg(2, cl::Local(local_size * sizeof(mytype)));
@@ -420,7 +394,8 @@ int main(int argc, char **argv) {
 
 
 		// sort integer values using selection sort
-		// sort inefficient and does not reall benefit from paralization
+		// sort inefficient and does not really benefit from paralization
+		// time: ~22500000000 ns
 		cl::Kernel kernel_sel_sort = cl::Kernel(program, "selection_sort_local");
 		kernel_sel_sort.setArg(0, buffer_I);
 		kernel_sel_sort.setArg(1, buffer_D);
@@ -437,7 +412,8 @@ int main(int argc, char **argv) {
 		std::cout << "UQ = " << D[D.size() - (range +1)] << std::endl;
 
 
-		// sort float
+		// same selection sort but using floats
+		// time: ~50500000000 ns
 		cl::Kernel kernel_sel_sort_float = cl::Kernel(program, "selection_sort_local_float");
 		kernel_sel_sort_float.setArg(0, buffer_FA);
 		kernel_sel_sort_float.setArg(1, buffer_FD);
